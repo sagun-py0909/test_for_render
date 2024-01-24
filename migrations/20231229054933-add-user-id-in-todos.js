@@ -10,7 +10,7 @@ module.exports = {
       fields:['userId'],
       type:'foreign key',
       references:{
-        table: 'users',
+        table: 'Users',
         field:'id'
       }
     })
