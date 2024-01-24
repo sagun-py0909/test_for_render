@@ -21,7 +21,7 @@ app.use(
     },
   })
 );
-app.use(function(request, response, next) {
+app.use(function (request, response, next) {
   response.locals.messages = request.flash();
   next();
 });
@@ -123,7 +123,7 @@ app.get("/signup", async (request, response) => {
 });
 
 app.get("/login", async (request, response) => {
-  response.render("login", { csrfvToken: request.csrfToken() });
+  response.render("login", { csrfToken: request.csrfToken() });
 });
 
 app.get(
@@ -169,10 +169,15 @@ app.post(
   connectEnsureLogin.ensureLoggedIn(),
   async function (request, response) {
     try {
+      const { title, dueDate } = request.body;
+      if (!title || !dueDate) {
+        request.flash("error", "title and dueDate cannot be empty");
+        return response.redirect("/todo");
+      }
       console.log(request.user.id);
       const todo = await Todo.addTodo({
-        title: request.body.title,
-        dueDate: request.body.dueDate,
+        title: title,
+        dueDate: dueDate,
         userId: request.user.id,
       });
       return response.redirect("/todo"), todo;
@@ -185,17 +190,21 @@ app.post(
 
 app.post("/users", async (request, response) => {
   const securePass = await bcrypt.hash(request.body.password, saltRounds);
-
+  const { firstName, lastName, email, password } = request.body;
+  if (!firstName || !email || !password) {
+    request.flash("error", "Enter the details");
+    return response.redirect("/signup");
+  }
   try {
     console.log("creating");
     const user = await User.create({
-      firstName: request.body.firstName,
-      lastName: request.body.lastName,
-      email: request.body.email,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
       password: securePass,
     });
     console.log(securePass);
-    request.login(user, (err) => {  
+    request.login(user, (err) => {
       if (err) {
         console.log(err);
       }
@@ -203,7 +212,8 @@ app.post("/users", async (request, response) => {
     });
   } catch (error) {
     console.log(error);
-    return response.status(422).json(error);
+    request.flash("error", "Enter the details");
+    return response.redirect("/signup").status(422).json(error);
   }
 });
 
