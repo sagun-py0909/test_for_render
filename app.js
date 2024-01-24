@@ -3,6 +3,7 @@ const app = express();
 const { Todo, User } = require("./models");
 const bodyParser = require("body-parser");
 const path = require("path");
+app.set("views", path.join(__dirname, "views"));
 app.use(bodyParser.json());
 const passport = require("passport");
 const connectEnsureLogin = require("connect-ensure-login");
@@ -10,7 +11,8 @@ const session = require("express-session");
 const localStrategy = require("passport-local");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
-
+const flash = require("connect-flash");
+app.use(flash());
 app.use(
   session({
     secret: "helloworld0992766237857235",
@@ -19,7 +21,10 @@ app.use(
     },
   })
 );
-
+app.use(function(request, response, next) {
+  response.locals.messages = request.flash();
+  next();
+});
 app.use(passport.initialize());
 app.use(passport.session());
 passport.use(
@@ -30,25 +35,16 @@ passport.use(
     },
     async (username, password, done) => {
       try {
-        const user = await User.findOne({
-          where: {
-            email: username,
-          },
-        });
-
-        if (!user) {
-          return done(null, false, { message: "Invalid User" });
-        }
-
+        const user = await User.findOne({ where: { email: username } });
         const result = await bcrypt.compare(password, user.password);
 
         if (result) {
           return done(null, user);
         } else {
-          return done(null, false, { message: "Invalid Password" });
+          return done(null, false, { message: "Invalid password" });
         }
-      } catch (err) {
-        return done(err);
+      } catch (error) {
+        return done(error);
       }
     }
   )
@@ -93,8 +89,6 @@ app.use(csrf({ cookie: true }));
 // // Call the function to initialize models
 // initializeModels()
 
-// ... rest of your Express app setup
-
 app.get("/", async (request, response) => {
   if (request.accepts("html")) {
     response.render("index", {
@@ -107,7 +101,7 @@ app.get(
   "/todo",
   connectEnsureLogin.ensureLoggedIn(),
   async (request, response) => {
-    const user = request.user; 
+    const user = request.user;
     const allTodos = await Todo.getAllTodos(user.id);
     if (request.accepts("html")) {
       response.render("todo", {
@@ -129,7 +123,7 @@ app.get("/signup", async (request, response) => {
 });
 
 app.get("/login", async (request, response) => {
-  response.render("login", { csrfToken: request.csrfToken() });
+  response.render("login", { csrfvToken: request.csrfToken() });
 });
 
 app.get(
@@ -161,7 +155,10 @@ app.get(
 
 app.post(
   "/session",
-  passport.authenticate("local", { failureRedirect: "/login" }),
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
   (request, response) => {
     response.redirect("/todo");
   }
@@ -198,7 +195,7 @@ app.post("/users", async (request, response) => {
       password: securePass,
     });
     console.log(securePass);
-    request.login(user, (err) => {
+    request.login(user, (err) => {  
       if (err) {
         console.log(err);
       }
