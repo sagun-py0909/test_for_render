@@ -36,6 +36,9 @@ passport.use(
     async (username, password, done) => {
       try {
         const user = await User.findOne({ where: { email: username } });
+        if(!user){
+          return done(null, false, { message: "Invalid email" });
+        }
         const result = await bcrypt.compare(password, user.password);
 
         if (result) {
