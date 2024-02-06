@@ -198,6 +198,11 @@ app.post("/users", async (request, response) => {
     request.flash("error", "Enter the details");
     return response.redirect("/signup");
   }
+  const data = User.findOne({where:{email:email}})
+  if(data){
+    request.flash("error", "email already exists");
+    return response.redirect("/signup");
+  }
   try {
     console.log("creating");
     const user = await User.create({
